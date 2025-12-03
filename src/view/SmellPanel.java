@@ -9,6 +9,7 @@ public class SmellPanel extends JPanel {
 
     private JLabel smellNameLabel;
     private JTextArea smellDescriptionArea;
+    private boolean selected = false;
 
     public SmellPanel() {
         setLayout(new BorderLayout());
@@ -28,7 +29,22 @@ public class SmellPanel extends JPanel {
     }
 
     public void showSmell(CodeSmell smell) {
+        if (smell == null) return;
         smellNameLabel.setText(smell.getNome());
-        smellDescriptionArea.setText(smell.getDescricao());
+        smellDescriptionArea.setText(smell.getDescricao() + "\nSeveridade: " + smell.getSeveridade());
+    }
+
+    public void setSelected(boolean sel) {
+        this.selected = sel;
+        if (sel) {
+            setBorder(BorderFactory.createLineBorder(Color.GREEN.darker(), 3));
+        } else {
+            setBorder(BorderFactory.createLineBorder(Color.RED, 2));
+        }
+        repaint();
+    }
+
+    public boolean isSelected() {
+        return selected;
     }
 }

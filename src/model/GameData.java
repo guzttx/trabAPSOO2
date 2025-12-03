@@ -35,9 +35,9 @@ public class GameData {
         initial.add(new PatternCard("Builder", "Simplifica criação de objetos complexos.", "Resolve Long Parameter List com construção fluente."));
         initial.add(new PatternCard("Template Method", "Define esqueleto de algoritmo, delegando passos.", "Resolve Duplicate Code com estrutura reutilizável."));
         
-        // Patterns extras para variedade
+        // Patterns extras (BUGFIX: Adapter precisa mencionar "Incomplete Library" no whenToUse)
         initial.add(new PatternCard("Observer", "Notifica objetos dependentes quando o estado muda.", "Útil para desacoplamento entre componentes."));
-        initial.add(new PatternCard("Adapter", "Faz a ponte entre interfaces incompatíveis.", "Facilita integração de módulos legados."));
+        initial.add(new PatternCard("Adapter", "Faz a ponte entre interfaces incompatíveis.", "Resolve Incomplete Library permitindo integração."));
         initial.add(new PatternCard("Singleton", "Garante uma única instância.", "Útil para gerenciar recursos globais."));
 
         for (int i = 0; i < initial.size(); i++) {

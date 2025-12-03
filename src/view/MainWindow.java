@@ -17,8 +17,10 @@ public class MainWindow extends JFrame {
     private JLabel estabilidadeLabel;
     private JLabel pontosLabel;
     private JLabel turnoLabel;
+    private JLabel deckLabel;
     private int pontos = 0;
     private int turno = 1;
+    private String ultimoSmellAdicionado = ""; // Previne duplicatas consecutivas
 
     public MainWindow() {
         setTitle("Refactor Hero - Card Game");
@@ -33,7 +35,7 @@ public class MainWindow extends JFrame {
         topPanel.setBackground(new Color(40, 60, 100));
         topPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
-        estabilidadeLabel = new JLabel("[HEART] Estabilidade: 10");
+        estabilidadeLabel = new JLabel("[HEART] Estabilidade: 12");
         estabilidadeLabel.setFont(new Font("Arial", Font.BOLD, 16));
         estabilidadeLabel.setForeground(Color.WHITE);
 
@@ -45,11 +47,17 @@ public class MainWindow extends JFrame {
         turnoLabel.setFont(new Font("Arial", Font.BOLD, 16));
         turnoLabel.setForeground(Color.WHITE);
 
+        deckLabel = new JLabel("[DECK] Baralho: " + GameData.getDeckSize());
+        deckLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        deckLabel.setForeground(new Color(150, 200, 255));
+
         topPanel.add(estabilidadeLabel);
         topPanel.add(Box.createHorizontalStrut(50));
         topPanel.add(pontosLabel);
         topPanel.add(Box.createHorizontalStrut(50));
         topPanel.add(turnoLabel);
+        topPanel.add(Box.createHorizontalStrut(50));
+        topPanel.add(deckLabel);
 
         JScrollPane tablePaneScroll = new JScrollPane();
         tablePanel = new JPanel(new GridLayout(0, 3, 15, 15));
@@ -90,6 +98,13 @@ public class MainWindow extends JFrame {
         comprarBtn.setFocusPainted(false);
         comprarBtn.addActionListener(e -> comprarCarta());
 
+        JButton mulliganBtn = new JButton("[SWAP] Trocar Mão (-1 ❤)");
+        mulliganBtn.setFont(new Font("Arial", Font.BOLD, 14));
+        mulliganBtn.setBackground(new Color(180, 80, 180));
+        mulliganBtn.setForeground(Color.WHITE);
+        mulliganBtn.setFocusPainted(false);
+        mulliganBtn.addActionListener(e -> executarMulligan());
+
         JButton dicaBtn = new JButton("[HELP] Dica");
         dicaBtn.setFont(new Font("Arial", Font.BOLD, 14));
         dicaBtn.setBackground(new Color(200, 150, 50));
@@ -100,6 +115,8 @@ public class MainWindow extends JFrame {
         controlPanel.add(aplicarBtn);
         controlPanel.add(Box.createHorizontalStrut(10));
         controlPanel.add(comprarBtn);
+        controlPanel.add(Box.createHorizontalStrut(10));
+        controlPanel.add(mulliganBtn);
         controlPanel.add(Box.createHorizontalStrut(10));
         controlPanel.add(dicaBtn);
         controlPanel.add(Box.createHorizontalGlue());
@@ -138,7 +155,8 @@ public class MainWindow extends JFrame {
             tablePanel.add(sp);
         }
 
-        for (int i = 0; i < 5; i++) {
+        // Começar com 7 cartas (ao invés de 5) para mais opções estratégicas
+        for (int i = 0; i < 7; i++) {
             Card c = GameData.drawCard();
             if (c == null) break;
             state.cartasJogador.add(c);
@@ -148,6 +166,7 @@ public class MainWindow extends JFrame {
             addCardToHand(c);
         }
 
+        updateDeckLabel();
         revalidate();
         repaint();
     }
@@ -241,21 +260,31 @@ public class MainWindow extends JFrame {
             handPanel.remove(selectedCardPanel);
             cardPanels.remove(selectedCardPanel);
             state.cartasJogador.remove(cardIndex);
+            
+            // Adiciona carta usada à pilha de descarte (reshuffle mechanic)
+            GameData.addToDiscard(carta);
 
             pontos += pontosGanhos;
             turno++;
             pontosLabel.setText("[STAR] Pontos: " + pontos);
             turnoLabel.setText("[PLAY] Turno: " + turno);
 
-            if (state.smellsAtivos.size() < 10 && turno % 2 == 0) {
+            // Bonus: +1 estabilidade a cada 3 smells resolvidos (max 12)
+            if (turno % 3 == 0 && state.estabilidade < 12) {
+                state.estabilidade++;
+                JOptionPane.showMessageDialog(this, "🎉 Bonus! +1 Estabilidade (bom trabalho!)");
+            }
+
+            // Novos smells a cada 3 turnos (era 2) para menos pressão
+            if (state.smellsAtivos.size() < 10 && turno % 3 == 0) {
                 adicionarNovoSmell();
             }
 
             updateEstabilidade();
+            updateDeckLabel();
             revalidate();
             repaint();
             
-            // Verificar se o jogador venceu
             checkVictory();
         } else {
             JOptionPane.showMessageDialog(this, "[X] A carta NAO resolve esse smell!\nEstabilidade -1");
@@ -264,12 +293,52 @@ public class MainWindow extends JFrame {
         }
     }
 
+    // Smells balanceados com múltiplas soluções viáveis (anti-duplicata)
     private void adicionarNovoSmell() {
-        String[] nomes = {"Speculative Generality", "Temporary Field", "Alternative Classes", "Incomplete Library"};
-        String[] desc = {"Código preparado para 'futuro' que nunca vem.", "Campo que nem sempre é usado.", "Duas classes fazem coisas similares.", "Biblioteca não oferece tudo que precisa."};
         java.util.Random r = new java.util.Random();
-        int idx = r.nextInt(nomes.length);
-        CodeSmell novoSmell = new CodeSmell(nomes[idx], r.nextInt(3) + 1, desc[idx], new String[]{"Extract Class"});
+        CodeSmell novoSmell;
+        int tentativas = 0;
+        
+        // Tenta até 10x para evitar duplicata do último smell adicionado
+        do {
+            int tipo = r.nextInt(6);
+            
+            switch(tipo) {
+                case 0:
+                    novoSmell = new CodeSmell("Speculative Generality", 2, 
+                        "Código preparado para 'futuro' que nunca vem.", 
+                        new String[]{"Extract Class", "Move Method"});
+                    break;
+                case 1:
+                    novoSmell = new CodeSmell("Temporary Field", 2, 
+                        "Campo que nem sempre é usado.", 
+                        new String[]{"Replace Temp with Query", "Introduce Parameter Object", "Extract Class"});
+                    break;
+                case 2:
+                    novoSmell = new CodeSmell("Lazy Class", 1, 
+                        "Classe que faz muito pouco.", 
+                        new String[]{"Extract Class", "Move Method"});
+                    break;
+                case 3:
+                    novoSmell = new CodeSmell("Middle Man", 2, 
+                        "Classe que apenas delega para outras.", 
+                        new String[]{"Move Method", "Extract Class"});
+                    break;
+                case 4:
+                    novoSmell = new CodeSmell("Inappropriate Intimacy", 2, 
+                        "Classes muito dependentes entre si.", 
+                        new String[]{"Move Method", "Extract Class", "Introduce Parameter Object"});
+                    break;
+                default:
+                    novoSmell = new CodeSmell("Incomplete Library", 2, 
+                        "Biblioteca não oferece tudo que precisa.", 
+                        new String[]{"Adapter", "Facade"});
+            }
+            
+            tentativas++;
+        } while (novoSmell.getNome().equals(ultimoSmellAdicionado) && tentativas < 10);
+        
+        ultimoSmellAdicionado = novoSmell.getNome();
         state.smellsAtivos.add(novoSmell);
 
         SmellCardPanel sp = new SmellCardPanel();
@@ -286,26 +355,88 @@ public class MainWindow extends JFrame {
     }
 
     private void comprarCarta() {
+        int deckSizeAntes = GameData.getDeckSize();
         Card nova = GameData.drawCard();
+        
         if (nova == null) {
-            JOptionPane.showMessageDialog(this, "Baralho vazio!");
+            JOptionPane.showMessageDialog(this, "Sem cartas disponíveis!\n(Baralho e descarte vazios)");
             return;
         }
+        
+        // Feedback de reshuffle
+        if (deckSizeAntes == 0 && GameData.getDeckSize() > 0) {
+            JOptionPane.showMessageDialog(this, "♻️ Descarte reembaralhado no baralho!");
+        }
+        
         state.cartasJogador.add(nova);
         addCardToHand(nova);
+        updateDeckLabel();
         revalidate();
         repaint();
     }
 
+    // Mulligan: descarta toda mão e compra novas cartas (custo: 1 estabilidade)
+    private void executarMulligan() {
+        if (state.cartasJogador.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Sua mão já está vazia!");
+            return;
+        }
+        
+        if (state.estabilidade <= 1) {
+            int confirm = JOptionPane.showConfirmDialog(this, 
+                "⚠️ AVISO: Trocar mão com 1 de estabilidade causará GAME OVER!\n\nContinuar mesmo assim?",
+                "Mulligan Perigoso", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm != JOptionPane.YES_OPTION) return;
+        }
+        
+        int numCartas = state.cartasJogador.size();
+        
+        // Descarta mão atual
+        for (Card c : state.cartasJogador) {
+            GameData.addToDiscard(c);
+        }
+        state.cartasJogador.clear();
+        
+        // Limpa UI da mão
+        for (CardPanel cp : cardPanels) {
+            handPanel.remove(cp);
+        }
+        cardPanels.clear();
+        
+        // Compra mesma quantidade de cartas
+        for (int i = 0; i < numCartas; i++) {
+            Card nova = GameData.drawCard();
+            if (nova != null) {
+                state.cartasJogador.add(nova);
+                addCardToHand(nova);
+            }
+        }
+        
+        // Custo de estabilidade
+        state.estabilidade--;
+        updateEstabilidade();
+        updateDeckLabel();
+        revalidate();
+        repaint();
+        
+        JOptionPane.showMessageDialog(this, "♻️ Mão trocada! (-1 estabilidade)");
+    }
+    
+    private void updateDeckLabel() {
+        int deckSize = GameData.getDeckSize();
+        int discardSize = GameData.getDiscardSize();
+        deckLabel.setText("[DECK] Baralho: " + deckSize + " | Descarte: " + discardSize);
+    }
+
     private void mostrarDica() {
         String dica = "DICAS:\n\n" +
-                "- Padroes (AZUIS): Resolvem problemas estruturais e ganham +15 pontos\n" +
-                "- Refatoracoes (VERDES): Melhoram o codigo e ganham +10 pontos\n" +
-                "- Smells (VERMELHOS): Sao problemas que precisam ser resolvidos\n" +
+                "- Padroes (AZUIS): Resolvem problemas estruturais (+15 pts)\n" +
+                "- Refatoracoes (VERDES): Melhoram o codigo (+10 pts)\n" +
+                "- [SWAP] Trocar Mao: Descarta e compra novas cartas (-1 estabilidade)\n" +
+                "- Cartas usadas vao para descarte e voltam quando baralho acaba\n" +
                 "- Se a ESTABILIDADE chegar a 0, GAME OVER!\n" +
                 "- Aplicar carta ERRADA diminui estabilidade\n" +
-                "- Compre cartas para ter mais opcoes\n" +
-                "- Vence quando resolver todos os smells!";
+                "- Vence quando resolver TODOS os smells!";
         JOptionPane.showMessageDialog(this, dica, "[HELP] Dicas do Jogo", JOptionPane.INFORMATION_MESSAGE);
     }
 }

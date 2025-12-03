@@ -180,6 +180,23 @@ public class MainWindow extends JFrame {
         new StartScreen();
     }
 
+    private void checkVictory() {
+        if (state.smellsAtivos.isEmpty()) {
+            String message = "🎉 PARABÉNS! VOCÊ VENCEU! 🎉\n\n" +
+                           "Você resolveu todos os Code Smells!\n\n" +
+                           "📊 ESTATÍSTICAS FINAIS:\n" +
+                           "⭐ Pontos: " + pontos + "\n" +
+                           "🎮 Turnos: " + turno + "\n" +
+                           "❤️ Estabilidade final: " + state.estabilidade + "\n\n" +
+                           "Você é um verdadeiro Refactor Hero!";
+            
+            JOptionPane.showMessageDialog(this, message, 
+                                        "VITÓRIA!", JOptionPane.INFORMATION_MESSAGE);
+            this.dispose();
+            new StartScreen();
+        }
+    }
+
     private void applySelectedCardToSmell() {
         SmellCardPanel target = null;
         for (SmellCardPanel sp : smellPanels) if (sp.isSelected()) target = sp;
@@ -237,6 +254,9 @@ public class MainWindow extends JFrame {
             updateEstabilidade();
             revalidate();
             repaint();
+            
+            // Verificar se o jogador venceu
+            checkVictory();
         } else {
             JOptionPane.showMessageDialog(this, "[X] A carta NAO resolve esse smell!\nEstabilidade -1");
             state.estabilidade--;

@@ -1,5 +1,5 @@
 # trabAPSOO2
 
 cd src
-javac -cp . model/*.java controller/*.java view/*.java App.java
-java -cp ..\out App
+$files = Get-ChildItem -Recurse -Filter *.java | ForEach-Object { $_.FullName } ; javac -d ../bin $files
+java -cp ..\bin App

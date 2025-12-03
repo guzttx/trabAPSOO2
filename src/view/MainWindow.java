@@ -8,7 +8,7 @@ import java.awt.*;
 public class MainWindow extends JFrame {
 
     private GameState state = new GameState();
-    private GameController controller = new GameController(state);
+    private GameController controller = new GameController();
 
     private JPanel tablePanel;
     private JPanel handPanel;

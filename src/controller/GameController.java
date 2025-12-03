@@ -1,24 +1,22 @@
 package controller;
 
 import model.CodeSmell;
-import model.GameState;
 import model.Card;
 import model.PatternCard;
 
 public class GameController {
 
-    private GameState state;
-
-    public GameController(GameState state) {
-        this.state = state;
+    public GameController() {
+        // Controller sem estado - apenas lógica de validação
     }
 
     public boolean tentarResolver(CodeSmell smell, Card carta) {
-
+        // Apenas valida se a carta resolve o smell, sem modificar o estado
+        if (smell == null || carta == null) return false;
+        
         for (String solucao : smell.getSolucoes()) {
             if (solucao.equalsIgnoreCase(carta.getTitle())) {
-                state.smellsAtivos.remove(smell);
-                state.estabilidade = Math.min(10, state.estabilidade + 1);
+                // Validação bem-sucedida
                 return true;
             }
         }
@@ -26,13 +24,9 @@ public class GameController {
     }
 
     public boolean aplicarPattern(PatternCard pattern, CodeSmell smell) {
+        // Apenas valida se o pattern resolve o smell, sem modificar o estado
         if (pattern == null || smell == null) return false;
-        if (pattern.matchesSmell(smell)) {
-            state.smellsAtivos.remove(smell);
-            state.estabilidade = Math.min(10, state.estabilidade + 2);
-            return true;
-        }
-        return false;
+        return pattern.matchesSmell(smell);
     }
 
 }

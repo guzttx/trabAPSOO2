@@ -3,6 +3,7 @@ package controller;
 import model.CodeSmell;
 import model.GameState;
 import model.Card;
+import model.PatternCard;
 
 public class GameController {
 
@@ -20,6 +21,16 @@ public class GameController {
                 state.estabilidade = Math.min(10, state.estabilidade + 1);
                 return true;
             }
+        }
+        return false;
+    }
+
+    public boolean aplicarPattern(PatternCard pattern, CodeSmell smell) {
+        if (pattern == null || smell == null) return false;
+        if (pattern.matchesSmell(smell)) {
+            state.smellsAtivos.remove(smell);
+            state.estabilidade = Math.min(10, state.estabilidade + 2);
+            return true;
         }
         return false;
     }
